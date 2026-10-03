@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ProviderConfig:
-    """Student TODO: define the provider configuration shared by the agents.
+    """Provider configuration shared by the agents.
 
     Required providers for this lab:
     - openai
