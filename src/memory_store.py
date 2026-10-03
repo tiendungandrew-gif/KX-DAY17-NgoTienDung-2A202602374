@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 
 
 def estimate_tokens(text: str) -> int:
@@ -87,7 +88,17 @@ class UserProfileStore:
             return
         current_facts = self.facts(user_id)
         for k, v in updates.items():
-            current_facts[k.strip().lower()] = v.strip()
+            k_clean = k.strip().lower()
+            if k_clean == "interests" and "interests" in current_facts:
+                existing_items = [i.strip() for i in current_facts["interests"].split(",") if i.strip()]
+                new_items = [i.strip() for i in v.split(",") if i.strip()]
+                combined = []
+                for item in existing_items + new_items:
+                    if item not in combined:
+                        combined.append(item)
+                current_facts[k_clean] = ", ".join(combined)
+            else:
+                current_facts[k_clean] = v.strip()
         self._save_facts(user_id, current_facts)
 
     def _save_facts(self, user_id: str, facts: dict[str, str]) -> None:
@@ -134,6 +145,8 @@ def extract_profile_updates(message: str) -> dict[str, str]:
         "đồ uống yêu thích của mình là gì",
         "đâu mới là",
         "bạn có biết",
+        "thử mô tả",
+        "mình là ai",
     ]
     if any(q in lower_msg for q in question_triggers) and not any(
         c in lower_msg for c in ["đính chính", "thực ra", "cập nhật", "tên mình là", "mình tên là"]
@@ -213,11 +226,13 @@ def extract_profile_updates(message: str) -> dict[str, str]:
 
     # 8. Technical Interests
     interests = []
-    if "python" in lower_msg:
+    if re.search(r"\bpython\b", lower_msg):
         interests.append("Python")
-    if "ai" in lower_msg or "ai ứng dụng" in lower_msg:
+    if re.search(r"\bAI\b", message) or re.search(
+        r"\b(?:ai\s+(?:agent|ứng dụng|nội bộ)|hệ thống\s+ai|startup\s+ai)\b", lower_msg
+    ):
         interests.append("AI")
-    if "mlops" in lower_msg:
+    if re.search(r"\bmlops\b", lower_msg):
         interests.append("MLOps")
     if interests:
         updates["interests"] = ", ".join(interests)
